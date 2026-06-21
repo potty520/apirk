@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>动态建表入库平台</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<header>
+  <h1>🐚 动态建表入库平台</h1>
+  <nav class="top-nav">
+    <button class="nav-btn active" data-panel="ingest">📥 数据入库</button>
+    <button class="nav-btn" data-panel="connections">🔗 连接管理</button>
+    <button class="nav-btn" data-panel="tasks">⏰ 定时任务</button>
+  </nav>
+</header>
+
+<div class="main">
+
+  <!-- ========== 面板1: 数据入库 ========== -->
+  <div class="panel-group" id="panel-ingest">
+
+    <aside class="panel panel-left">
+      <section class="card">
+        <h2>📄 上传 Word 文档</h2>
+        <div class="upload-area" id="uploadArea">
+          <input type="file" id="wordFile" accept=".docx" hidden>
+          <div class="upload-hint" onclick="document.getElementById('wordFile').click()">
+            📁 点击选择文件 或拖拽到此处
+          </div>
+          <div class="upload-info hidden" id="uploadInfo">
+            <span id="uploadFileName"></span>
+            <button class="btn btn-sm btn-outline" onclick="document.getElementById('wordFile').click()">更换</button>
+          </div>
+        </div>
+        <div class="flex-row" style="margin-top:8px;">
+          <button id="btnUploadWord" class="btn btn-primary" style="flex:1;">解析并入库</button>
+        </div>
+        <div id="uploadResult" class="result-box hidden"></div>
+      </section>
+
+      <section class="card">
+        <h2>📥 JSON 数据入库</h2>
+        <div class="flex-row">
+          <input type="text" id="tableName" placeholder="表名 (如: users)" value="users">
+          <button id="btnIngest" class="btn btn-primary">提交入库</button>
+        </div>
+        <div class="flex-row" style="margin-bottom:8px;">
+          <label style="font-size:0.8rem;color:var(--text-dim);display:flex;align-items:center;gap:4px;">
+            模式:
+            <select id="ingestMode">
+              <option value="append">追加</option>
+              <option value="upsert">更新</option>
+            </select>
+          </label>
+          <input type="text" id="keyColumn" placeholder="主键列" style="flex:1;display:none;">
+          <select id="connSelect" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:4px 6px;font-size:0.75rem;">
+            <option value="">默认库 (H2)</option>
+          </select>
+        </div>
+        <label class="field-label">JSON 数据:</label>
+        <textarea id="jsonInput" placeholder='粘贴 JSON 对象或数组...'></textarea>
+        <div id="ingestResult" class="result-box hidden"></div>
+      </section>
+
+      <section class="card">
+        <h2>📋 表列表 <span style="font-size:0.7rem;color:var(--text-dim);" id="connLabel"></span></h2>
+        <div class="flex-row" style="margin-bottom:4px;">
+          <button id="btnRefreshTables" class="btn btn-outline btn-sm">刷新</button>
+          <button id="btnClearDb" class="btn btn-danger btn-sm">清空库</button>
+        </div>
+        <ul id="tableList" class="table-list"></ul>
+      </section>
+    </aside>
+
+    <main class="panel panel-right">
+      <div id="detailArea" class="card placeholder">点击左侧表名查看结构和数据</div>
+    </main>
+  </div>
+
+  <!-- ========== 面板2: 连接管理 ========== -->
+  <div class="panel-group hidden" id="panel-connections">
+    <div class="panel-single" style="max-width:700px;margin:0 auto;">
+      <section class="card">
+        <h2>🔗 添加数据库连接</h2>
+        <div class="form-grid">
+          <input type="text" id="connName" placeholder="连接名称 (如: 生产库)">
+          <select id="connType">
+            <option value="H2">H2</option>
+            <option value="MySQL">MySQL</option>
+            <option value="MariaDB">MariaDB</option>
+            <option value="PostgreSQL">PostgreSQL</option>
+            <option value="SQLServer">SQL Server</option>
+            <option value="Oracle">Oracle</option>
+            <option value="SQLite">SQLite</option>
+          </select>
+          <input type="text" id="connUrl" placeholder="JDBC URL" style="grid-column:1/-1;">
+          <input type="text" id="connUser" placeholder="用户名">
+          <input type="password" id="connPass" placeholder="密码">
+          <button class="btn btn-outline btn-sm" id="btnTestConn">测试连接</button>
+          <button class="btn btn-primary btn-sm" id="btnAddConn">添加连接</button>
+        </div>
+        <div id="connResult" class="result-box hidden"></div>
+      </section>
+
+      <section class="card">
+        <h2>📋 已保存的连接</h2>
+        <table class="data-table" id="connTable">
+          <thead><tr><th>名称</th><th>类型</th><th>URL</th><th>用户</th><th>操作</th></tr></thead>
+          <tbody><tr><td colspan="5" style="color:var(--text-dim);text-align:center;">暂无连接</td></tr></tbody>
+        </table>
+      </section>
+    </div>
+  </div>
+
+  <!-- ========== 面板3: 定时任务 ========== -->
+  <div class="panel-group hidden" id="panel-tasks">
+    <div class="panel-single" style="max-width:750px;margin:0 auto;">
+      <section class="card">
+        <h2>⏰ 创建定时任务</h2>
+        <div class="form-grid">
+          <input type="text" id="taskName" placeholder="任务名称 (如: 每日同步)">
+          <input type="text" id="taskTable" placeholder="目标表名">
+          <div style="display:flex;gap:4px;grid-column:1/-1;">
+            <select id="taskConnSelect" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:6px;font-size:0.8rem;">
+              <option value="">默认库</option>
+            </select>
+            <input type="text" id="taskUrl" placeholder="数据源 URL (可选)" style="flex:2;">
+          </div>
+          <select id="taskFreq" style="grid-column:1/-1;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:6px;font-size:0.8rem;">
+            <option value="0 8 * * *">每天 08:00</option>
+            <option value="0 12 * * *">每天 12:00</option>
+            <option value="0 18 * * *">每天 18:00</option>
+            <option value="0 0 * * *">每天 00:00</option>
+            <option value="0 8 * * 1">每周一 08:00</option>
+            <option value="0 8 * * 1-5">工作日 08:00</option>
+            <option value="0 */6 * * *">每 6 小时</option>
+            <option value="custom">自定义 cron...</option>
+          </select>
+          <input type="text" id="taskCronCustom" placeholder="自定义 cron 表达式 (分 时 日 月 周)" style="grid-column:1/-1;display:none;">
+          <textarea id="taskJsonBody" placeholder='JSON 数据模板 (可选, 留空使用 URL 拉取)' style="grid-column:1/-1;min-height:60px;"></textarea>
+          <button class="btn btn-primary btn-sm" id="btnAddTask" style="grid-column:1/-1;">创建定时任务</button>
+        </div>
+        <div id="taskResult" class="result-box hidden"></div>
+      </section>
+
+      <section class="card">
+        <h2>📋 任务列表</h2>
+        <div id="taskList"></div>
+      </section>
+    </div>
+  </div>
+
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
