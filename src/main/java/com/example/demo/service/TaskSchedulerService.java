@@ -33,23 +33,27 @@ public class TaskSchedulerService {
     }
 
     private void initMetaTable() {
-        metaJdbc.execute("""
-            CREATE TABLE IF NOT EXISTS scheduled_tasks (
-                id VARCHAR(64) PRIMARY KEY,
-                name VARCHAR(200) NOT NULL,
-                table_name VARCHAR(200) NOT NULL,
-                connection_id VARCHAR(64) DEFAULT '',
-                source_type VARCHAR(20) DEFAULT 'json',
-                cron_expr VARCHAR(100) NOT NULL,
-                cron_desc VARCHAR(200) DEFAULT '',
-                enabled BOOLEAN DEFAULT TRUE,
-                url VARCHAR(500) DEFAULT '',
-                json_body CLOB DEFAULT '{}',
-                last_run TIMESTAMP NULL,
-                next_run TIMESTAMP NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            """);
+        try {
+            metaJdbc.execute("""
+                CREATE TABLE IF NOT EXISTS scheduled_tasks (
+                    id VARCHAR(64) PRIMARY KEY,
+                    name VARCHAR(200) NOT NULL,
+                    table_name VARCHAR(200) NOT NULL,
+                    connection_id VARCHAR(64),
+                    source_type VARCHAR(20),
+                    cron_expr VARCHAR(100) NOT NULL,
+                    cron_desc VARCHAR(200),
+                    enabled BOOLEAN,
+                    url VARCHAR(500),
+                    json_body CLOB,
+                    last_run TIMESTAMP,
+                    next_run TIMESTAMP,
+                    created_at TIMESTAMP
+                )
+                """);
+        } catch (Exception e) {
+            System.err.println("元数据表 scheduled_tasks 创建失败: " + e.getMessage());
+        }
     }
 
     /** 列出所有任务 */
@@ -66,7 +70,7 @@ public class TaskSchedulerService {
         String id = UUID.randomUUID().toString().substring(0, 8);
 
         metaJdbc.update(
-            "INSERT INTO scheduled_tasks (id, name, table_name, connection_id, source_type, cron_expr, cron_desc, enabled, url, json_body) VALUES (?,?,?,?,?,?,?,TRUE,?,?)",
+            "INSERT INTO scheduled_tasks (id, name, table_name, connection_id, source_type, cron_expr, cron_desc, enabled, url, json_body, created_at) VALUES (?,?,?,?,?,?,?,TRUE,?,?,CURRENT_TIMESTAMP)",
             id, name, tableName, connectionId != null ? connectionId : "", sourceType, cronExpr, cronDesc, url, jsonBody
         );
 

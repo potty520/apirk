@@ -24,17 +24,22 @@ public class ConnectionManagerService {
     }
 
     private void initMetaTable() {
-        metaJdbc.execute("""
-            CREATE TABLE IF NOT EXISTS db_connections (
-                id VARCHAR(64) PRIMARY KEY,
-                name VARCHAR(200) NOT NULL,
-                type VARCHAR(20) NOT NULL DEFAULT 'H2',
-                url VARCHAR(500) NOT NULL,
-                username VARCHAR(100) DEFAULT '',
-                password VARCHAR(200) DEFAULT '',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-            """);
+        // 跨数据库兼容 DDL (无 DEFAULT 值, 无数据库特定语法)
+        try {
+            metaJdbc.execute("""
+                CREATE TABLE IF NOT EXISTS db_connections (
+                    id VARCHAR(64) PRIMARY KEY,
+                    name VARCHAR(200) NOT NULL,
+                    type VARCHAR(20) NOT NULL,
+                    url VARCHAR(500) NOT NULL,
+                    username VARCHAR(100),
+                    password VARCHAR(200),
+                    created_at TIMESTAMP
+                )
+                """);
+        } catch (Exception e) {
+            System.err.println("元数据表 db_connections 创建失败: " + e.getMessage());
+        }
     }
 
     private void loadSavedConnections() {
@@ -72,7 +77,7 @@ public class ConnectionManagerService {
     public Map<String, Object> add(String name, String type, String url, String username, String password) {
         String id = UUID.randomUUID().toString().substring(0, 8);
         metaJdbc.update(
-            "INSERT INTO db_connections (id, name, type, url, username, password) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO db_connections (id, name, type, url, username, password, created_at) VALUES (?,?,?,?,?,?,CURRENT_TIMESTAMP)",
             id, name, type.toUpperCase(), url, username, password
         );
 
